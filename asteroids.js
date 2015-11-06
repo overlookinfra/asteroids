@@ -116,8 +116,6 @@ var Asteroids = (function(as) {
     as.createAsteroids(level || as.levels[1].asteroids);
     as.createShip();
     as.core.frame();
-    //$(window).on('keydown', as.shipInput);
-    //$(window).on('keyup', as.shipInput);
     window.addEventListener('keydown', as.shipInput);
     window.addEventListener('keyup', as.shipInput);
   };
