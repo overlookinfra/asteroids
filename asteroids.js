@@ -1,7 +1,5 @@
 /**
  * Asteroids!
- * @todo - move to github repo
- * @todo - write limited documentation on github
  * @todo - add sound effects??
  * @todo - create start menu UI
  * @todo - create level system
