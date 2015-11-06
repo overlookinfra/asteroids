@@ -1,5 +1,8 @@
 /**
  * Asteroids!
+ *
+ * (a) Wil Neeley
+ * (c) Code may be freely distributed under the MIT license.
  * @todo - add sound effects??
  * @todo - create start menu UI
  * @todo - create level system
