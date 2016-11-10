@@ -3,9 +3,6 @@
  *
  * (a) Wil Neeley
  * (c) Code may be freely distributed under the MIT license.
- * @todo - add sound effects??
- * @todo - create start menu UI
- * @todo - create level system
  */
 (function(root, factory) {
   if (typeof define === 'function' && define.amd) {
@@ -40,6 +37,9 @@
 
     // Stores references to asteroids in the scene
     as.asteroids = [];
+
+    // Overall asteroid speed offset
+    as.asteroid_speed_offset = 1;
 
     // Asteroid polygon coords
     as.asteroid_coords = {
@@ -80,8 +80,9 @@
     // Define levels
     as.levels = {
       1: {
-        asteroids: 4,
-        ufos: 2,
+        asteroids: 1,
+        asteroids_speed: 1,
+        ufos: 1,
         ufo_start_time: null,
         ufo_active: false,
         ufo_paused: false,
@@ -92,8 +93,22 @@
         ufo_missile_firing_rate: 1000
       },
       2: {
-        asteroids: 6,
-        ufos: 3,
+        asteroids: 2,
+        asteroids_speed: 2,
+        ufos: 2,
+        ufo_start_time: null,
+        ufo_active: false,
+        ufo_paused: false,
+        ufos_deployed: 0,
+        ufo_interval: 5000,
+        ufo_speed: 2,
+        ufo_jump_speed: 3000,
+        ufo_missile_firing_rate: 1000
+      },
+      3: {
+        asteroids: 4,
+        asteroids_speed: 2,
+        ufos: 2,
         ufo_start_time: null,
         ufo_active: false,
         ufo_paused: false,
@@ -113,20 +128,19 @@
       score_ufo_gain: 100
     };
 
+    // Is the game active or paused?
+    as.game_status = 'paused';
+
     /**
      * Initialize game.
      */
-    as.init = function( level ) {
+    as.init = function() {
       as.canvas_w = as.canvas.width;
       as.canvas_h = as.canvas.height;
       as.ctx = as.canvas.getContext('2d');
-      as.missile_fire_rate = 250;
-      as.core.then = Date.now();
-      as.createAsteroids(level || as.levels[1].asteroids);
-      as.createShip();
-      as.core.frame();
       window.addEventListener('keydown', as.shipInput);
       window.addEventListener('keyup', as.shipInput);
+      as.startGameScreen();
     };
 
     /**
@@ -170,12 +184,16 @@
         // Clear scene
         as.ctx.clearRect(0, 0, as.canvas_w, as.canvas_h);
 
-        // Level cleared?
-        if (!as.asteroids.length) {
+        // Level cleared (all asteroids and UFOs destroyed)?
+        if (!as.asteroids.length && !as.ufos.length) {
           // @todo - not sure this is doing what we want.
           window.cancelAnimationFrame(as.core.animationFrame);
+
+          // Increment game level
           as.updateLevel(1);
-          as.init(as.stats.level);
+
+          // Start game and next level
+          as.startGame();
         }
 
         // Update the game score
@@ -267,7 +285,9 @@
 
             // Shoot missiles from UFO
             level.missileThrottle = level.missileThrottle || as.core.throttle(function() {
-                as.createMissile(ufo);
+                if (!ufo.destroyed) {
+                  as.createMissile(ufo);
+                }
               }, level.ufo_missile_firing_rate);
             level.missileThrottle();
 
@@ -283,6 +303,9 @@
                 ufo.color = 'rgba(0, 0, 0, 0)';
                 level.ufo_active = false;
 
+                // Mark the UFO as destroyed
+                ufo.destroyed = true;
+
                 // Delete UFO.
                 as.ufos.splice(uidx, 1);
 
@@ -295,8 +318,8 @@
                 // Delete out of bound missiles
                 as.missiles.splice(midx, 1);
 
-                // Generate some explosion particles
-                as.explodingAsteroidParticles(50);
+                // Generate/update some explosion particles
+                as.explodingAsteroidParticles(5);
 
                 // Update initial particle properties
                 for (var pidx in as.asteroid_particles) {
@@ -375,20 +398,22 @@
               as.asteroidExplosion(asteroid);
 
               // Generate some explosion particles
-              as.explodingAsteroidParticles(50);
+              as.explodingAsteroidParticles(5);
 
               // Update initial particle properties
-              for (var pidx in as.asteroid_particles) {
-                var
-                  particle        = as.asteroid_particles[pidx],
-                  rand_angle      = Math.floor(Math.random() * 360),
-                  rand_speed      = Math.random() * .1;
-                particle.x = asteroid.x;
-                particle.y = asteroid.y;
-                particle.speed = rand_speed;
-                particle.vx = particle.speed * Math.cos(rand_angle * Math.PI / 180.0);
-                particle.vy = particle.speed * Math.sin(rand_angle * Math.PI / 180.0);
-                particle.draw();
+              if (as.asteroid_particles.length) {
+                for (var pidx in as.asteroid_particles) {
+                  var
+                    particle        = as.asteroid_particles[pidx],
+                    rand_angle      = Math.floor(Math.random() * 360),
+                    rand_speed      = Math.random() * .1;
+                  particle.x = asteroid.x;
+                  particle.y = asteroid.y;
+                  particle.speed = rand_speed;
+                  particle.vx = particle.speed * Math.cos(rand_angle * Math.PI / 180.0);
+                  particle.vy = particle.speed * Math.sin(rand_angle * Math.PI / 180.0);
+                  particle.draw();
+                }
               }
             }
           }
@@ -416,20 +441,20 @@
           asteroid.draw();
           switch (asteroid.dir) {
             case 'ul' :
-              asteroid.x -= asteroid.vx;
-              asteroid.y -= asteroid.vy;
+              asteroid.x -= asteroid.vx - as.asteroid_speed_offset;
+              asteroid.y -= asteroid.vy - as.asteroid_speed_offset;
               break;
             case 'ur' :
-              asteroid.x += asteroid.vx;
-              asteroid.y -= asteroid.vy;
+              asteroid.x += asteroid.vx + -as.asteroid_speed_offset;
+              asteroid.y -= asteroid.vy - as.asteroid_speed_offset;
               break;
             case 'dl' :
-              asteroid.x -= asteroid.vx;
-              asteroid.y += asteroid.vy;
+              asteroid.x -= asteroid.vx - as.asteroid_speed_offset;
+              asteroid.y += asteroid.vy + -as.asteroid_speed_offset;
               break;
             case 'dr' :
-              asteroid.x += asteroid.vx;
-              asteroid.y += asteroid.vy;
+              asteroid.x += asteroid.vx + -as.asteroid_speed_offset;
+              asteroid.y += asteroid.vy + -as.asteroid_speed_offset;
               break;
           }
         }
@@ -492,6 +517,7 @@
      * Generates asteroid particles.
      */
     as.explodingAsteroidParticles = function( count ) {
+      as.asteroid_particles = [];
       for (var pidx = 0; pidx < count; pidx++) {
         as.asteroid_particles.push({
           x: 0,
@@ -810,6 +836,7 @@
      * Creates a UFO enemy.
      */
     as.createUfo = function( count ) {
+      as.ufos = [];
       for (var i = 0; i < count; i++) {
         var
           start_x       = Math.floor(Math.random() * as.canvas_w),
@@ -849,6 +876,7 @@
           color: 'white',
           move_points: move_points,
           curr_point: 0,
+          destroyed: false,
           draw: function() {
             as.ctx.lineWidth = 2;
             as.ctx.strokeStyle = this.color;
@@ -1080,14 +1108,19 @@
       }
       return {
         draw: function() {
-          var prepend = '';
+          var
+            str             = "SCORE: ",
+            str_width       = null,
+            pad             = 30,
+            prepend         = '';
           for (var i = 0; i < (10 - as.stats.score.toString().length); i++) {
             prepend = prepend + "" + '0';
           }
-          prepend = prepend + as.stats.score;
+          str += prepend + as.stats.score;
+          str_width = as.ctx.measureText(str);
           as.ctx.font = "16px courier";
           as.ctx.fillStyle = 'white';
-          as.ctx.fillText("SCORE: " + prepend, 20, 30);
+          as.ctx.fillText(str, (str_width.width / 2) + pad, pad);
         }
       }
     };
@@ -1101,14 +1134,85 @@
       }
       return {
         draw: function() {
+          var
+            str             = "LEVEL: " + as.stats.level,
+            str_width       = as.ctx.measureText(str),
+            pad             = 30;
           if (!as.levels[as.stats.level].start_time) {
             as.levels[as.stats.level].start_time = Date.now();
           }
           as.ctx.font = "16px courier";
           as.ctx.fillStyle = 'white';
-          as.ctx.fillText("LEVEL: " + as.stats.level, as.canvas_w - 100, 30);
+          as.ctx.fillText(str, as.canvas.width - (str_width.width / 2) - pad, pad);
         }
       }
+    };
+
+    /**
+     * Start the game.
+     */
+    as.startGameScreen = function() {
+      var
+        game_slide_index        = 0,
+        game_slides             = [
+          {
+            duration: 5000,
+            text: "Press SPACEBAR to start the game!"
+          },
+          {
+            duration: 5000,
+            text: "Use ARROW keys to move and SPACE to fire."
+          }
+        ],
+        slideViewer             = function( id ) {
+          var
+            slide_obj       = game_slides[id];
+
+          // Update tracking index
+          if (id == game_slides.length-1) {
+            game_slide_index = 0;
+          } else {
+            game_slide_index++;
+          }
+
+          // Add current slide
+          as.ctx.clearRect(0, 0, as.canvas_w, as.canvas_h);
+          as.ctx.font = "16px courier";
+          as.ctx.fillStyle = 'white';
+          as.ctx.textBaseline = 'middle';
+          as.ctx.textAlign = "center";
+          as.ctx.fillText(slide_obj.text, (as.canvas.width / 2), (as.canvas_h / 2));
+
+          // Initialize next slide after duration
+          setTimeout(function() {
+            if (as.game_status == 'paused') {
+              slideViewer(game_slide_index);
+            }
+          }, slide_obj.duration);
+        };
+
+      // Initialize the pre game slides
+      if (as.game_status == 'paused') {
+        slideViewer(0);
+      }
+
+      // Attach game start event listener
+      window.addEventListener("keydown", function(e) {
+        if (e.keyCode == 32 && as.game_status == 'paused') {
+          as.game_status = 'active';
+          as.startGame();
+        }
+      });
+    };
+
+    /**
+     * Start/restart the game
+     */
+    as.startGame = function() {
+      as.core.then = Date.now();
+      as.createAsteroids(as.levels[as.stats.level].asteroids);
+      as.createShip();
+      as.core.frame();
     };
 
     return as;
@@ -1116,7 +1220,3 @@
 
   return Asteroids;
 });
-
-// var Asteroids = (function(as) {
-//
-// }(Asteroids || {}));
