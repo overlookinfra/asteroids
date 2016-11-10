@@ -15,7 +15,7 @@
     var as = {};
 
     // Debug mode on or off
-    as.debug_mode = true;
+    as.debug_mode = false;
 
     // Reference the asteroids scene
     as.canvas = document.getElementById('asteroids-container');
@@ -134,7 +134,12 @@
     /**
      * Initialize game.
      */
-    as.init = function() {
+    as.init = function(options) {
+
+      // Configure startup overrides
+      as.debug_mode = options.debug_mode || false;
+
+      // Configure canvas
       as.canvas_w = as.canvas.width;
       as.canvas_h = as.canvas.height;
       as.ctx = as.canvas.getContext('2d');
