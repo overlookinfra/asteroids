@@ -5,8 +5,10 @@
 In my free time I coded a version of Asteroids using JavaScript and the 
 canvas element. This was just a little experiment so it's unlikely I'll
 improve it much more. I'm posting it on GitHub in case anyone finds any
-of the bits of code useful. Programming asteroids is a really great way
+of the bits of code useful. Programming Asteroids is a really great way
 to get started understanding the basics of 2D video games. Enjoy!
+
+View [demo](http://boilerjs.com/misc/asteroids/asteroids.html).
 
 ## Up and running
 
