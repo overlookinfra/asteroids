@@ -38,9 +38,6 @@
     // Stores references to asteroids in the scene
     as.asteroids = [];
 
-    // Overall asteroid speed offset
-    as.asteroid_speed_offset = 1;
-
     // Asteroid polygon coords
     as.asteroid_coords = {
       1: [
@@ -77,49 +74,6 @@
       40: false
     };
 
-    // Define levels
-    as.levels = {
-      1: {
-        asteroids: 1,
-        asteroids_speed: 1,
-        ufos: 1,
-        ufo_start_time: null,
-        ufo_active: false,
-        ufo_paused: false,
-        ufos_deployed: 0,
-        ufo_interval: 2000,
-        ufo_speed: 2,
-        ufo_jump_speed: 3000,
-        ufo_missile_firing_rate: 1000
-      },
-      2: {
-        asteroids: 2,
-        asteroids_speed: 2,
-        ufos: 2,
-        ufo_start_time: null,
-        ufo_active: false,
-        ufo_paused: false,
-        ufos_deployed: 0,
-        ufo_interval: 5000,
-        ufo_speed: 2,
-        ufo_jump_speed: 3000,
-        ufo_missile_firing_rate: 1000
-      },
-      3: {
-        asteroids: 4,
-        asteroids_speed: 2,
-        ufos: 2,
-        ufo_start_time: null,
-        ufo_active: false,
-        ufo_paused: false,
-        ufos_deployed: 0,
-        ufo_interval: 5000,
-        ufo_speed: 2,
-        ufo_jump_speed: 3000,
-        ufo_missile_firing_rate: 1000
-      }
-    };
-
     // Store current game stats
     as.stats = {
       level: 1,
@@ -138,6 +92,9 @@
 
       // Configure startup overrides
       as.debug_mode = options.debug_mode || false;
+
+      // Configure game levels (REQUIRED!)
+      as.levels = options.levels;
 
       // Configure canvas
       as.canvas_w = as.canvas.width;
@@ -236,113 +193,107 @@
         as.shipOutOfBounds(as.ship);
         as.ship.draw();
 
-        // Deploy UFOs based on level
+        
+        
+        
+        
+        // Deploy level's UFOs
         var level = as.levels[as.stats.level];
-        if (Date.now() > level.ufo_start_time + level.ufo_interval && !level.ufo_active && level.ufos_deployed < level.ufos) {
-          as.createUfo(1);
-          level.ufo_active = true;
-          level.ufos_deployed++;
+        if (!level.ufos_deployed) {
+          level.ufos_deployed = true;
+          as.createUfo(level.ufos);
         }
 
         // Draw UFOs when active
-        if (level.ufo_active) {
-          for (var uidx in as.ufos) {
+        for (var uidx in as.ufos) {
+          var
+            ufo     = as.ufos[uidx],
+            dest    = ufo.move_points[ufo.curr_point];
+
+          // Move the UFO to its target point
+          if (!ufo.paused) {
             var
-              ufo     = as.ufos[uidx],
-              dest    = ufo.move_points[ufo.curr_point];
+              angle   = Math.atan2(ufo.y - dest.y, ufo.x - dest.x) * 180 / Math.PI,
+              theta   = (180 + angle) % 360;
 
-            if (!level.ufo_paused) {
-              var
-                angle   = Math.atan2(ufo.y - dest.y, ufo.x - dest.x) * 180 / Math.PI,
-                theta   = (180 + angle) % 360;
+            // Set UFO speed
+            ufo.speed = level.ufo_speed;
 
-              // Set UFO speed
-              ufo.speed = level.ufo_speed;
+            // Animate until ship reaches area of destination
+            if (!((ufo.x > dest.x - 20) && (ufo.x < dest.x + 20))) {
 
-              // Animate until ship reaches area of destination
-              if (!((ufo.x > dest.x - 20) && (ufo.x < dest.x + 20))) {
-
-                // Fly UFO towards its destination
-                ufo.vx2 = ufo.x - (ufo.x + ufo.speed * Math.cos(Math.PI * theta / 180));
-                ufo.vy2 = ufo.y - (ufo.y + ufo.speed * Math.sin(Math.PI * theta / 180));
-                ufo.x -= ufo.vx2;
-                ufo.y -= ufo.vy2;
-              }
-
-              // Move ship to next point
-              else {
-                level.ufo_paused = true;
-                if (ufo.curr_point == ufo.move_points.length-1) {
-                  ufo.curr_point = 0;
-                } else {
-                  ufo.curr_point++;
-                }
-
-                // Move to next point after delay
-                setTimeout(function() {
-                  level.ufo_paused = false;
-                }, level.ufo_jump_speed);
-              }
+              // Fly UFO towards its destination
+              ufo.vx2 = ufo.x - (ufo.x + ufo.speed * Math.cos(Math.PI * theta / 180));
+              ufo.vy2 = ufo.y - (ufo.y + ufo.speed * Math.sin(Math.PI * theta / 180));
+              ufo.x -= ufo.vx2;
+              ufo.y -= ufo.vy2;
             }
 
-            // Detect ship/ufo collisions
-            as.detectShipExplosion(ufo);
+            // Pause the UFO's movement and get it ready to move to the next point
+            else {
+              ufo.paused = true;
+              if (ufo.curr_point == ufo.move_points.length-1) {
+                ufo.curr_point = 0;
+              } else {
+                ufo.curr_point++;
+              }
 
-            // Shoot missiles from UFO
-            level.missileThrottle = level.missileThrottle || as.core.throttle(function() {
-                if (!ufo.destroyed) {
-                  as.createMissile(ufo);
-                }
-              }, level.ufo_missile_firing_rate);
-            level.missileThrottle();
+              // Call UFO movement timeout method
+              ufo.pauseMovement();
+            }
+          }
 
-            // Draw UFO
-            ufo.draw();
+          // Initialize firing of UFO missiles
+          ufo.fireMissiles();
 
-            // Detect ufo/missile collisions
-            for (var midx in as.missiles) {
-              var missile = as.missiles[midx];
+          // Draw UFO
+          ufo.draw();
 
-              // Detect missiles hitting UFO
-              if (as.isCircleCollision(ufo, missile) && missile.fired_from == 'ship') {
-                ufo.color = 'rgba(0, 0, 0, 0)';
-                level.ufo_active = false;
+          // Detect ship/ufo collisions
+          as.detectShipExplosion(ufo);
 
-                // Mark the UFO as destroyed
-                ufo.destroyed = true;
+          // Detect ufo/missile collisions
+          for (var midx in as.missiles) {
+            var missile = as.missiles[midx];
 
-                // Delete UFO.
-                as.ufos.splice(uidx, 1);
+            // Detect missiles hitting UFO
+            if (as.isCircleCollision(ufo, missile) && missile.fired_from == 'ship') {
+              ufo.color = 'rgba(0, 0, 0, 0)';
 
-                // Update start level start time
-                level.ufo_start_time = Date.now();
+              // Mark the UFO as destroyed
+              ufo.destroyed = true;
 
-                // Add to max score
-                as.stats.score += as.stats.score_ufo_gain;
+              // Delete UFO.
+              as.ufos.splice(uidx, 1);
 
-                // Delete out of bound missiles
-                as.missiles.splice(midx, 1);
+              // Add to max score
+              as.stats.score += as.stats.score_ufo_gain;
 
-                // Generate/update some explosion particles
-                as.explodingAsteroidParticles(5);
+              // Delete out of bound missiles
+              as.missiles.splice(midx, 1);
 
-                // Update initial particle properties
-                for (var pidx in as.asteroid_particles) {
-                  var
-                    particle        = as.asteroid_particles[pidx],
-                    rand_angle      = Math.floor(Math.random() * 360),
-                    rand_speed      = Math.random() * .1;
-                  particle.x = ufo.x;
-                  particle.y = ufo.y;
-                  particle.speed = rand_speed;
-                  particle.vx = particle.speed * Math.cos(rand_angle * Math.PI / 180.0);
-                  particle.vy = particle.speed * Math.sin(rand_angle * Math.PI / 180.0);
-                  particle.draw();
-                }
+              // Generate/update some explosion particles
+              as.explodingAsteroidParticles(5);
+
+              // Update initial particle properties
+              for (var pidx in as.asteroid_particles) {
+                var
+                  particle        = as.asteroid_particles[pidx],
+                  rand_angle      = Math.floor(Math.random() * 360),
+                  rand_speed      = Math.random() * .1;
+                particle.x = ufo.x;
+                particle.y = ufo.y;
+                particle.speed = rand_speed;
+                particle.vx = particle.speed * Math.cos(rand_angle * Math.PI / 180.0);
+                particle.vy = particle.speed * Math.sin(rand_angle * Math.PI / 180.0);
+                particle.draw();
               }
             }
           }
         }
+
+
+
 
         // Draw firing missiles
         for (var midx in as.missiles) {
@@ -446,20 +397,20 @@
           asteroid.draw();
           switch (asteroid.dir) {
             case 'ul' :
-              asteroid.x -= asteroid.vx - as.asteroid_speed_offset;
-              asteroid.y -= asteroid.vy - as.asteroid_speed_offset;
+              asteroid.x -= asteroid.vx - as.levels[as.stats.level].asteroid_speed;
+              asteroid.y -= asteroid.vy - as.levels[as.stats.level].asteroid_speed;
               break;
             case 'ur' :
-              asteroid.x += asteroid.vx + -as.asteroid_speed_offset;
-              asteroid.y -= asteroid.vy - as.asteroid_speed_offset;
+              asteroid.x += asteroid.vx + -as.levels[as.stats.level].asteroid_speed;
+              asteroid.y -= asteroid.vy - as.levels[as.stats.level].asteroid_speed;
               break;
             case 'dl' :
-              asteroid.x -= asteroid.vx - as.asteroid_speed_offset;
-              asteroid.y += asteroid.vy + -as.asteroid_speed_offset;
+              asteroid.x -= asteroid.vx - as.levels[as.stats.level].asteroid_speed;
+              asteroid.y += asteroid.vy + -as.levels[as.stats.level].asteroid_speed;
               break;
             case 'dr' :
-              asteroid.x += asteroid.vx + -as.asteroid_speed_offset;
-              asteroid.y += asteroid.vy + -as.asteroid_speed_offset;
+              asteroid.x += asteroid.vx + -as.levels[as.stats.level].asteroid_speed;
+              asteroid.y += asteroid.vy + -as.levels[as.stats.level].asteroid_speed;
               break;
           }
         }
@@ -841,7 +792,6 @@
      * Creates a UFO enemy.
      */
     as.createUfo = function( count ) {
-      as.ufos = [];
       for (var i = 0; i < count; i++) {
         var
           start_x       = Math.floor(Math.random() * as.canvas_w),
@@ -868,6 +818,7 @@
 
         // Add UFO to list
         as.ufos.push({
+          id: i,
           x: start_x,
           y: start_y,
           vx: 0,
@@ -882,6 +833,27 @@
           move_points: move_points,
           curr_point: 0,
           destroyed: false,
+          paused: false,
+          pauseMovement: function() {
+            var
+              level         = as.levels[as.stats.level],
+              ufo_ctx       = this,
+              rand_pause    = Math.floor(Math.random() * (level.ufo_max_pause_time - level.ufo_min_pause_time) + level.ufo_min_pause_time);
+            setTimeout(function() {
+              ufo_ctx.paused = false;
+            }, rand_pause);
+          },
+          fireMissiles: function() {
+            var
+              level         = as.levels[as.stats.level],
+              ufo_ctx       = this;
+            this.missileThrottle = this.missileThrottle || as.core.throttle(function() {
+                if (!ufo_ctx.destroyed) {
+                  as.createMissile(this);
+                }
+              }, level.ufo_missile_fire_rate);
+            this.missileThrottle();
+          },
           draw: function() {
             as.ctx.lineWidth = 2;
             as.ctx.strokeStyle = this.color;

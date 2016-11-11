@@ -15,7 +15,36 @@
 <script>
     var asteroids = new Asteroids();
     asteroids.init({
-        debug_mode: true
+        debug_mode: true,
+        levels: {
+            1: {
+                asteroids: 1,
+                asteroid_speed: 1,
+                ufos: 2,
+                ufo_speed: 2,
+                ufo_min_pause_time: 1000,
+                ufo_max_pause_time: 3000,
+                ufo_missile_fire_rate: 1000
+            },
+            2: {
+                asteroids: 2,
+                asteroid_speed: 2,
+                ufos: 2,
+                ufo_speed: 2,
+                ufo_min_pause_time: 1000,
+                ufo_max_pause_time: 3000,
+                ufo_missile_fire_rate: 1000
+            },
+            3: {
+                asteroids: 4,
+                asteroid_speed: 2,
+                ufos: 2,
+                ufo_speed: 2,
+                ufo_min_pause_time: 1000,
+                ufo_max_pause_time: 3000,
+                ufo_missile_fire_rate: 1000
+            }
+        }
     });
 </script>
 </body>
