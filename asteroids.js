@@ -148,10 +148,9 @@
 
         // Level cleared (all asteroids and UFOs destroyed)?
         if (!as.asteroids.length && !as.ufos.length) {
-          // @todo - not sure this is doing what we want.
           window.cancelAnimationFrame(as.core.animationFrame);
 
-          // Increment game level
+          // Increment game level by how many?
           as.updateLevel(1);
 
           // Start game and next level
@@ -164,256 +163,14 @@
         // Update the game level
         as.updateLevel().draw();
 
-        // Move ship up
-        if (as.active_keys['38']) {
+        // Render/handle ship interactions
+        as.renderShip();
 
-          // Ship to fly towards angle it is pointing. Calculate coords in distance
-          var theta = (180 + as.ship.angle) % 360;
-          as.ship.vx2 = as.ship.x - (as.ship.x + as.ship.speed * Math.cos(Math.PI * theta / 180));
-          as.ship.vy2 = as.ship.y - (as.ship.y + as.ship.speed * Math.sin(Math.PI * theta / 180));
-        }
+        // Render/handle UFO interactions
+        as.renderUfos();
 
-        // Apply ship friction to velocity
-        as.ship.vx2 *= as.ship.friction;
-        as.ship.vy2 *= as.ship.friction;
-        as.ship.x -= as.ship.vx2;
-        as.ship.y -= as.ship.vy2;
-
-        // Rotate ship left
-        if (as.active_keys['37']) {
-          as.ship.angle -= as.ship.turn;
-        }
-
-        // Rotate ship right
-        if (as.active_keys['39']) {
-          as.ship.angle += as.ship.turn;
-        }
-
-        // Draw ship
-        as.shipOutOfBounds(as.ship);
-        as.ship.draw();
-
-        
-        
-        
-        
-        // Deploy level's UFOs
-        var level = as.levels[as.stats.level];
-        if (!level.ufos_deployed) {
-          level.ufos_deployed = true;
-          as.createUfo(level.ufos);
-        }
-
-        // Draw UFOs when active
-        for (var uidx in as.ufos) {
-          var
-            ufo     = as.ufos[uidx],
-            dest    = ufo.move_points[ufo.curr_point];
-
-          // Move the UFO to its target point
-          if (!ufo.paused) {
-            var
-              angle   = Math.atan2(ufo.y - dest.y, ufo.x - dest.x) * 180 / Math.PI,
-              theta   = (180 + angle) % 360;
-
-            // Set UFO speed
-            ufo.speed = level.ufo_speed;
-
-            // Animate until ship reaches area of destination
-            if (!((ufo.x > dest.x - 20) && (ufo.x < dest.x + 20))) {
-
-              // Fly UFO towards its destination
-              ufo.vx2 = ufo.x - (ufo.x + ufo.speed * Math.cos(Math.PI * theta / 180));
-              ufo.vy2 = ufo.y - (ufo.y + ufo.speed * Math.sin(Math.PI * theta / 180));
-              ufo.x -= ufo.vx2;
-              ufo.y -= ufo.vy2;
-            }
-
-            // Pause the UFO's movement and get it ready to move to the next point
-            else {
-              ufo.paused = true;
-              if (ufo.curr_point == ufo.move_points.length-1) {
-                ufo.curr_point = 0;
-              } else {
-                ufo.curr_point++;
-              }
-
-              // Call UFO movement timeout method
-              ufo.pauseMovement();
-            }
-          }
-
-          // Initialize firing of UFO missiles
-          ufo.fireMissiles();
-
-          // Draw UFO
-          ufo.draw();
-
-          // Detect ship/ufo collisions
-          as.detectShipExplosion(ufo);
-
-          // Detect ufo/missile collisions
-          for (var midx in as.missiles) {
-            var missile = as.missiles[midx];
-
-            // Detect missiles hitting UFO
-            if (as.isCircleCollision(ufo, missile) && missile.fired_from == 'ship') {
-              ufo.color = 'rgba(0, 0, 0, 0)';
-
-              // Mark the UFO as destroyed
-              ufo.destroyed = true;
-
-              // Delete UFO.
-              as.ufos.splice(uidx, 1);
-
-              // Add to max score
-              as.stats.score += as.stats.score_ufo_gain;
-
-              // Delete out of bound missiles
-              as.missiles.splice(midx, 1);
-
-              // Generate/update some explosion particles
-              as.explodingAsteroidParticles(5);
-
-              // Update initial particle properties
-              for (var pidx in as.asteroid_particles) {
-                var
-                  particle        = as.asteroid_particles[pidx],
-                  rand_angle      = Math.floor(Math.random() * 360),
-                  rand_speed      = Math.random() * .1;
-                particle.x = ufo.x;
-                particle.y = ufo.y;
-                particle.speed = rand_speed;
-                particle.vx = particle.speed * Math.cos(rand_angle * Math.PI / 180.0);
-                particle.vy = particle.speed * Math.sin(rand_angle * Math.PI / 180.0);
-                particle.draw();
-              }
-            }
-          }
-        }
-
-
-
-
-        // Draw firing missiles
-        for (var midx in as.missiles) {
-          var missile = as.missiles[midx];
-          missile.draw();
-
-          // Explode UFO fired missile on ship
-          if (missile.fired_from == 'ufo') {
-            as.detectShipExplosion(missile);
-          }
-
-          // Delete missile when off screen
-          if (
-            missile.x >= as.canvas_w ||
-            missile.x <= 0 ||
-            missile.y >= as.canvas_h ||
-            missile.y <= 0
-          ) {
-            as.missiles.splice(midx, 1);
-          }
-        }
-
-        // Move asteroids
-        for (var idx in as.asteroids) {
-          var asteroid = as.asteroids[idx];
-
-          // Handle asteroid going off screen
-          as.asteroidOutOfBounds(asteroid);
-
-          // Detect ship/asteroid collisions
-          as.detectShipExplosion(asteroid);
-
-          // Animate exploding ship parts
-          for (var spidx in as.ship_exploding_parts) {
-            var part = as.ship_exploding_parts[spidx];
-            part.x += part.vx;
-            part.y += part.vy;
-            part.alpha -= part.alpha_speed;
-            part.draw();
-            if (part.alpha <= 0) as.ship_exploding_parts.splice(pidx, 1);
-          }
-
-          // Detect asteroid/missile collisions
-          for (var midx in as.missiles) {
-            var missile = as.missiles[midx];
-
-            // Detect exploding asteroids
-            if (as.isCircleCollision(asteroid, missile)) {
-              asteroid.color = 'red';
-
-              // Add to max score
-              as.stats.score += as.stats.score_asteroid_gain;
-
-              // Delete out of bound missiles
-              as.missiles.splice(midx, 1);
-
-              // Handle asteroid missile impact
-              as.asteroidExplosion(asteroid);
-
-              // Generate some explosion particles
-              as.explodingAsteroidParticles(5);
-
-              // Update initial particle properties
-              if (as.asteroid_particles.length) {
-                for (var pidx in as.asteroid_particles) {
-                  var
-                    particle        = as.asteroid_particles[pidx],
-                    rand_angle      = Math.floor(Math.random() * 360),
-                    rand_speed      = Math.random() * .1;
-                  particle.x = asteroid.x;
-                  particle.y = asteroid.y;
-                  particle.speed = rand_speed;
-                  particle.vx = particle.speed * Math.cos(rand_angle * Math.PI / 180.0);
-                  particle.vy = particle.speed * Math.sin(rand_angle * Math.PI / 180.0);
-                  particle.draw();
-                }
-              }
-            }
-          }
-
-          // Animate explosion particles
-          for (var pidx in as.asteroid_particles) {
-            var particle = as.asteroid_particles[pidx];
-            particle.x += particle.vx;
-            particle.y += particle.vy;
-            particle.alpha -= particle.alpha_speed;
-            particle.draw();
-            if (particle.alpha <= 0) as.asteroid_particles.splice(pidx, 1);
-          }
-
-          // Detect asteroid/asteroid collisions
-          for (var aidx in as.asteroids) {
-            var asteroid2 = as.asteroids[aidx];
-            if (as.isCircleCollision(asteroid, asteroid2)) {
-              asteroid.dir = as.getOppositeVerticalDirection(asteroid.dir);
-              asteroid2.dir = as.getOppositeVerticalDirection(asteroid2.dir);
-            }
-          }
-
-          // Animate asteroids
-          asteroid.draw();
-          switch (asteroid.dir) {
-            case 'ul' :
-              asteroid.x -= asteroid.vx - as.levels[as.stats.level].asteroid_speed;
-              asteroid.y -= asteroid.vy - as.levels[as.stats.level].asteroid_speed;
-              break;
-            case 'ur' :
-              asteroid.x += asteroid.vx + -as.levels[as.stats.level].asteroid_speed;
-              asteroid.y -= asteroid.vy - as.levels[as.stats.level].asteroid_speed;
-              break;
-            case 'dl' :
-              asteroid.x -= asteroid.vx - as.levels[as.stats.level].asteroid_speed;
-              asteroid.y += asteroid.vy + -as.levels[as.stats.level].asteroid_speed;
-              break;
-            case 'dr' :
-              asteroid.x += asteroid.vx + -as.levels[as.stats.level].asteroid_speed;
-              asteroid.y += asteroid.vy + -as.levels[as.stats.level].asteroid_speed;
-              break;
-          }
-        }
+        // Render/handle asteroid interactions
+        as.renderAsteroids();
       }
     };
 
@@ -1073,6 +830,267 @@
         setTimeout(function() {
           as.ship.color = 'red';
         }, 1000);
+      }
+    };
+
+    /**
+     * Render/handle the asteroids and their interactions.
+     */
+    as.renderAsteroids = function() {
+      for (var idx in as.asteroids) {
+        var asteroid = as.asteroids[idx];
+
+        // Handle asteroid going off screen
+        as.asteroidOutOfBounds(asteroid);
+
+        // Detect ship/asteroid collisions
+        as.detectShipExplosion(asteroid);
+
+        // Animate exploding ship parts
+        for (var spidx in as.ship_exploding_parts) {
+          var part = as.ship_exploding_parts[spidx];
+          part.x += part.vx;
+          part.y += part.vy;
+          part.alpha -= part.alpha_speed;
+          part.draw();
+          if (part.alpha <= 0) as.ship_exploding_parts.splice(pidx, 1);
+        }
+
+        // Detect asteroid/missile collisions
+        for (var midx in as.missiles) {
+          var missile = as.missiles[midx];
+
+          // Detect exploding asteroids
+          if (as.isCircleCollision(asteroid, missile)) {
+            asteroid.color = 'red';
+
+            // Add to max score
+            as.stats.score += as.stats.score_asteroid_gain;
+
+            // Delete out of bound missiles
+            as.missiles.splice(midx, 1);
+
+            // Handle asteroid missile impact
+            as.asteroidExplosion(asteroid);
+
+            // Generate some explosion particles
+            as.explodingAsteroidParticles(5);
+
+            // Update initial particle properties
+            if (as.asteroid_particles.length) {
+              for (var pidx in as.asteroid_particles) {
+                var
+                  particle        = as.asteroid_particles[pidx],
+                  rand_angle      = Math.floor(Math.random() * 360),
+                  rand_speed      = Math.random() * .1;
+                particle.x = asteroid.x;
+                particle.y = asteroid.y;
+                particle.speed = rand_speed;
+                particle.vx = particle.speed * Math.cos(rand_angle * Math.PI / 180.0);
+                particle.vy = particle.speed * Math.sin(rand_angle * Math.PI / 180.0);
+                particle.draw();
+              }
+            }
+          }
+        }
+
+        // Animate explosion particles
+        for (var pidx in as.asteroid_particles) {
+          var particle = as.asteroid_particles[pidx];
+          particle.x += particle.vx;
+          particle.y += particle.vy;
+          particle.alpha -= particle.alpha_speed;
+          particle.draw();
+          if (particle.alpha <= 0) as.asteroid_particles.splice(pidx, 1);
+        }
+
+        // Detect asteroid/asteroid collisions
+        for (var aidx in as.asteroids) {
+          var asteroid2 = as.asteroids[aidx];
+          if (as.isCircleCollision(asteroid, asteroid2)) {
+            asteroid.dir = as.getOppositeVerticalDirection(asteroid.dir);
+            asteroid2.dir = as.getOppositeVerticalDirection(asteroid2.dir);
+          }
+        }
+
+        // Animate asteroids
+        asteroid.draw();
+        switch (asteroid.dir) {
+          case 'ul' :
+            asteroid.x -= asteroid.vx - as.levels[as.stats.level].asteroid_speed;
+            asteroid.y -= asteroid.vy - as.levels[as.stats.level].asteroid_speed;
+            break;
+          case 'ur' :
+            asteroid.x += asteroid.vx + -as.levels[as.stats.level].asteroid_speed;
+            asteroid.y -= asteroid.vy - as.levels[as.stats.level].asteroid_speed;
+            break;
+          case 'dl' :
+            asteroid.x -= asteroid.vx - as.levels[as.stats.level].asteroid_speed;
+            asteroid.y += asteroid.vy + -as.levels[as.stats.level].asteroid_speed;
+            break;
+          case 'dr' :
+            asteroid.x += asteroid.vx + -as.levels[as.stats.level].asteroid_speed;
+            asteroid.y += asteroid.vy + -as.levels[as.stats.level].asteroid_speed;
+            break;
+        }
+      }
+    };
+
+    /**
+     * Render/handle the ship and its interactions.
+     */
+    as.renderShip = function() {
+
+      // Move ship up
+      if (as.active_keys['38']) {
+
+        // Ship to fly towards angle it is pointing. Calculate coords in distance
+        var theta = (180 + as.ship.angle) % 360;
+        as.ship.vx2 = as.ship.x - (as.ship.x + as.ship.speed * Math.cos(Math.PI * theta / 180));
+        as.ship.vy2 = as.ship.y - (as.ship.y + as.ship.speed * Math.sin(Math.PI * theta / 180));
+      }
+
+      // Apply ship friction to velocity
+      as.ship.vx2 *= as.ship.friction;
+      as.ship.vy2 *= as.ship.friction;
+      as.ship.x -= as.ship.vx2;
+      as.ship.y -= as.ship.vy2;
+
+      // Rotate ship left
+      if (as.active_keys['37']) {
+        as.ship.angle -= as.ship.turn;
+      }
+
+      // Rotate ship right
+      if (as.active_keys['39']) {
+        as.ship.angle += as.ship.turn;
+      }
+
+      // Draw ship
+      as.shipOutOfBounds(as.ship);
+      as.ship.draw();
+
+      // Draw ship's firing missiles
+      for (var midx in as.missiles) {
+        var missile = as.missiles[midx];
+        missile.draw();
+
+        // Explode UFO fired missile on ship
+        if (missile.fired_from == 'ufo') {
+          as.detectShipExplosion(missile);
+        }
+
+        // Delete missile when off screen
+        if (
+          missile.x >= as.canvas_w ||
+          missile.x <= 0 ||
+          missile.y >= as.canvas_h ||
+          missile.y <= 0
+        ) {
+          as.missiles.splice(midx, 1);
+        }
+      }
+    };
+
+    /**
+     * Render/handle each level's UFOs and its interactions.
+     */
+    as.renderUfos = function() {
+      var
+        level         = as.levels[as.stats.level];
+
+      // Create UFOs if non have been deployed
+      if (!level.ufos_deployed) {
+        level.ufos_deployed = true;
+        as.createUfo(level.ufos);
+      }
+
+      // Draw UFOs when active
+      for (var uidx in as.ufos) {
+        var
+          ufo     = as.ufos[uidx],
+          dest    = ufo.move_points[ufo.curr_point];
+
+        // Move the UFO to its target point
+        if (!ufo.paused) {
+          var
+            angle   = Math.atan2(ufo.y - dest.y, ufo.x - dest.x) * 180 / Math.PI,
+            theta   = (180 + angle) % 360;
+
+          // Set UFO speed
+          ufo.speed = level.ufo_speed;
+
+          // Animate until ship reaches area of destination
+          if (!((ufo.x > dest.x - 20) && (ufo.x < dest.x + 20))) {
+
+            // Fly UFO towards its destination
+            ufo.vx2 = ufo.x - (ufo.x + ufo.speed * Math.cos(Math.PI * theta / 180));
+            ufo.vy2 = ufo.y - (ufo.y + ufo.speed * Math.sin(Math.PI * theta / 180));
+            ufo.x -= ufo.vx2;
+            ufo.y -= ufo.vy2;
+          }
+
+          // Pause the UFO's movement and get it ready to move to the next point
+          else {
+            ufo.paused = true;
+            if (ufo.curr_point == ufo.move_points.length-1) {
+              ufo.curr_point = 0;
+            } else {
+              ufo.curr_point++;
+            }
+
+            // Call UFO movement timeout method
+            ufo.pauseMovement();
+          }
+        }
+
+        // Initialize firing of UFO missiles
+        ufo.fireMissiles();
+
+        // Draw UFO
+        ufo.draw();
+
+        // Detect ship/ufo collisions
+        as.detectShipExplosion(ufo);
+
+        // Detect ufo/missile collisions
+        for (var midx in as.missiles) {
+          var missile = as.missiles[midx];
+
+          // Detect missiles hitting UFO
+          if (as.isCircleCollision(ufo, missile) && missile.fired_from == 'ship') {
+            ufo.color = 'rgba(0, 0, 0, 0)';
+
+            // Mark the UFO as destroyed
+            ufo.destroyed = true;
+
+            // Delete UFO.
+            as.ufos.splice(uidx, 1);
+
+            // Add to max score
+            as.stats.score += as.stats.score_ufo_gain;
+
+            // Delete out of bound missiles
+            as.missiles.splice(midx, 1);
+
+            // Generate/update some explosion particles
+            as.explodingAsteroidParticles(5);
+
+            // Update initial particle properties
+            for (var pidx in as.asteroid_particles) {
+              var
+                particle        = as.asteroid_particles[pidx],
+                rand_angle      = Math.floor(Math.random() * 360),
+                rand_speed      = Math.random() * .1;
+              particle.x = ufo.x;
+              particle.y = ufo.y;
+              particle.speed = rand_speed;
+              particle.vx = particle.speed * Math.cos(rand_angle * Math.PI / 180.0);
+              particle.vy = particle.speed * Math.sin(rand_angle * Math.PI / 180.0);
+              particle.draw();
+            }
+          }
+        }
       }
     };
 
