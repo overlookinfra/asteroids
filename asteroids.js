@@ -79,7 +79,8 @@
       level: 1,
       score: 0,
       score_asteroid_gain: 20,
-      score_ufo_gain: 100
+      score_ufo_gain: 100,
+      score_death_loss: 50
     };
 
     // Is the game active or paused?
@@ -812,6 +813,9 @@
         // Generate some exploding ship parts
         as.explodingShipParts(6);
 
+        // Decrease score
+        as.stats.score -= as.stats.score_death_loss;
+
         // Update initial parts properties
         for (var spidx in as.ship_exploding_parts) {
           var
@@ -856,7 +860,7 @@
           if (part.alpha <= 0) as.ship_exploding_parts.splice(pidx, 1);
         }
 
-        // Detect asteroid/missile collisions
+        // Detect asteroid/missile collisions (fired from ship & UFOs)
         for (var midx in as.missiles) {
           var missile = as.missiles[midx];
 
@@ -1106,14 +1110,20 @@
       return {
         draw: function() {
           var
-            str             = "SCORE: ",
+            str             = "",
             str_width       = null,
             pad             = 30,
-            prepend         = '';
-          for (var i = 0; i < (10 - as.stats.score.toString().length); i++) {
+            prepend         = '',
+            negative        = false;
+          if (as.stats.score < 0) {
+            negative = true;
+          }
+          for (var i = 0; i < (10 - as.stats.score.toString().replace("-", "").length); i++) {
             prepend = prepend + "" + '0';
           }
-          str += prepend + as.stats.score;
+          str += prepend + as.stats.score.toString().replace("-", "");
+          if (negative) str = "-" + str;
+          str = "SCORE: " + str;
           str_width = as.ctx.measureText(str);
           as.ctx.font = "16px courier";
           as.ctx.fillStyle = 'white';
