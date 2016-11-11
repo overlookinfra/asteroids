@@ -865,7 +865,9 @@
             asteroid.color = 'red';
 
             // Add to max score
-            as.stats.score += as.stats.score_asteroid_gain;
+            if (missile.fired_from == 'ship') {
+              as.stats.score += as.stats.score_asteroid_gain;
+            }
 
             // Delete out of bound missiles
             as.missiles.splice(midx, 1);
