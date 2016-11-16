@@ -100,6 +100,9 @@
       // Nyan path override?
       as.nyan_path_override = options.nyan_path_override || '';
 
+      // Nyan sound?
+      as.nyan_sound = options.nyan_sound || false;
+
       // Configure game levels (REQUIRED!)
       as.levels = options.levels;
 
@@ -438,7 +441,7 @@
               var bow_seg_size = 12;
 
               // Play the annoying nyan sound track
-              this.nyan.sound.play();
+              if (as.nyan_sound) this.nyan.sound.play();
 
               // Create offset line segments
               for (var i = 0; i <= 2; i++) {
@@ -490,7 +493,7 @@
                 as.ctx.fill();
                 as.ctx.closePath();
               }
-            } else if (this.nyan) {
+            } else if (this.nyan && as.nyan_sound) {
               this.nyan.sound.pause();
             }
 
@@ -513,22 +516,26 @@
                 frame_rate: 100
               });
 
-              // Create nyan sound file
-              this.nyan.sound = document.createElement('audio');
-              if (this.nyan.sound.canPlayType('audio/mpeg') != '') {
-                this.nyan.sound.src = as.nyan_path_override + 'assets/nyanlooped.mp3';
-              } else {
-                this.nyan.sound.src = as.nyan_path_override + 'assets/nyanlooped.ogg';
+              // Only create sound player when instructed
+              if (as.nyan_sound) {
+                
+                // Create nyan sound file
+                this.nyan.sound = document.createElement('audio');
+                if (this.nyan.sound.canPlayType('audio/mpeg') != '') {
+                  this.nyan.sound.src = as.nyan_path_override + 'assets/nyanlooped.mp3';
+                } else {
+                  this.nyan.sound.src = as.nyan_path_override + 'assets/nyanlooped.ogg';
+                }
+
+                // Handle nyan sound event
+                this.nyan.sound.addEventListener('ended', function() {
+                  // See: http://forestmist.org/2010/04/html5-audio-loops/
+                  this.currentTime = 0;
+                }, false);
+
+                // Append the sound track element
+                document.body.appendChild(this.nyan.sound);
               }
-
-              // Handle nyan sound event
-              this.nyan.sound.addEventListener('ended', function() {
-                // See: http://forestmist.org/2010/04/html5-audio-loops/
-                this.currentTime = 0;
-              }, false);
-
-              // Append the sound track element
-              document.body.appendChild(this.nyan.sound);
             }
 
             // Draw nyan

@@ -30,6 +30,7 @@ Then include the following script to initialize the game.
         debug_mode: false,
         nyan_mode: true,
         nyan_path_override: '',
+        nyan_sound: true,
         levels: {
             1: {
                 asteroids: 3,
