@@ -29,6 +29,7 @@ Then include the following script to initialize the game.
     asteroids.init({
         debug_mode: false,
         nyan_mode: true,
+        nyan_path_override: '',
         levels: {
             1: {
                 asteroids: 3,

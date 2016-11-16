@@ -97,6 +97,9 @@
       // Are we going to be in nyan mode?
       as.nyan_mode = options.nyan_mode || false;
 
+      // Nyan path override?
+      as.nyan_path_override = options.nyan_path_override || "assets/nyan-sprite-sheet.png";
+
       // Configure game levels (REQUIRED!)
       as.levels = options.levels;
 
@@ -489,7 +492,7 @@
             // Create the kitty sprite if it doesn't yet exist.
             if (!this.nyan) {
               var nyanImage = new Image();
-              nyanImage.src = "assets/nyan-sprite-sheet.png";
+              nyanImage.src = as.nyan_path_override;
               this.nyan = as.core.sprite({
                 ctx: as.ctx,
                 width: 100,
