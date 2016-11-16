@@ -25,7 +25,7 @@ Then include the following script to initialize the game.
 <script>
     var asteroids = new Asteroids();
     asteroids.init({
-        debug_mode: true,
+        debug_mode: false,
         levels: {
             1: {
                 asteroids: 3,
@@ -54,6 +54,9 @@ Then include the following script to initialize the game.
                 ufo_max_pause_time: 3000,
                 ufo_missile_fire_rate: 1000
             }
+        },
+        gameCompleted: function() {
+            alert('You won the game!');
         }
     });
 </script>

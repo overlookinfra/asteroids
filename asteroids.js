@@ -97,6 +97,16 @@
       // Configure game levels (REQUIRED!)
       as.levels = options.levels;
 
+      // Configure game completed callback
+      as.gameCompletedCallback = options.gameCompleted;
+
+      // Determine the total level count
+      var total_count = 0;
+      for (var c in as.levels) {
+        total_count += 1;
+      }
+      as.stats.level_count = total_count;
+
       // Configure canvas
       as.canvas_w = as.canvas.width;
       as.canvas_h = as.canvas.height;
@@ -134,7 +144,7 @@
       },
       frame: function() {
         as.core.setDelta();
-        as.core.render();
+        if (!as.core.render()) return false;
         as.core.animationFrame = window.requestAnimationFrame(as.core.frame);
       },
       setDelta: function() {
@@ -151,11 +161,20 @@
         if (!as.asteroids.length && !as.ufos.length) {
           window.cancelAnimationFrame(as.core.animationFrame);
 
-          // Increment game level by how many?
-          as.updateLevel(1);
+          // End the game when all opponents are destroyed and all levels completed
+          if (as.stats.level >= as.stats.level_count) {
 
-          // Start game and next level
-          as.startGame();
+            // End the game
+            as.gameCompleted();
+            return false;
+          } else {
+
+            // Increment game level by how many?
+            as.updateLevel(1);
+
+            // Start game and next level
+            as.startGame();
+          }
         }
 
         // Update the game score
@@ -172,6 +191,9 @@
 
         // Render/handle asteroid interactions
         as.renderAsteroids();
+
+        // Return true otherwise the render loop is killed
+        return true;
       }
     };
 
@@ -1220,6 +1242,29 @@
       as.createAsteroids(as.levels[as.stats.level].asteroids);
       as.createShip();
       as.core.frame();
+    };
+
+    /**
+     * A callback to execute when the game is completed.
+     */
+    as.gameCompleted = function() {
+
+      // Clear scene/add game over message
+      as.ctx.clearRect(0, 0, as.canvas_w, as.canvas_h);
+      as.ctx.font = "16px courier";
+      as.ctx.fillStyle = 'white';
+      as.ctx.textBaseline = 'middle';
+      as.ctx.textAlign = "center";
+      as.ctx.fillText('Game completed!', (as.canvas.width / 2), (as.canvas_h / 2));
+      as.ctx.fillText('Your score: ' + as.stats.score, (as.canvas.width / 2), (as.canvas_h / 2) + 30);
+
+      // Kill the animation sequence
+      window.cancelAnimationFrame(as.core.animationFrame);
+
+      // Game completed user callback
+      if (typeof as.gameCompletedCallback == 'function') {
+        as.gameCompletedCallback();
+      }
     };
 
     return as;
