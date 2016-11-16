@@ -91,8 +91,11 @@
      */
     as.init = function(options) {
 
-      // Configure startup overrides
+      // Configure startup overrides (debug mode)
       as.debug_mode = options.debug_mode || false;
+
+      // Are we going to be in nyan mode?
+      as.nyan_mode = options.nyan_mode || false;
 
       // Configure game levels (REQUIRED!)
       as.levels = options.levels;
@@ -194,6 +197,36 @@
 
         // Return true otherwise the render loop is killed
         return true;
+      },
+      sprite: function( options ) {
+        var sprite = {
+          ctx: options.ctx,
+          width: options.image.width,
+          height: options.image.height,
+          image: options.image,
+          scale: options.scale,
+          w: options.image.width * options.scale,
+          h: options.image.height * options.scale,
+          frame_w: options.frame_w,
+          frame_h: options.frame_h,
+          frames: options.frames,
+          frame_idx: options.frame_idx,
+          frame_rate: options.frame_rate
+        };
+
+        // Update frame index at defined animation interval
+        sprite.interval = setInterval(function() {
+          if (as.isDirectionalKeyActive()) {
+            if (sprite.frame_idx < (sprite.frames-1)) {
+              sprite.frame_idx += 1;
+            } else {
+              sprite.frame_idx = 0;
+            }
+          }
+        }, sprite.frame_rate);
+
+        // Return the animating sprite object
+        return sprite;
       }
     };
 
@@ -336,7 +369,6 @@
             as.ctx.lineTo(thrust_x + 10, thrust_y);
             as.ctx.lineTo(thrust_x, thrust_y - 4);
             as.ctx.moveTo(thrust_x, thrust_y);
-            as.ctx.moveTo(thrust_x, thrust_y);
             as.ctx.lineTo(thrust_x + 10, thrust_y);
             as.ctx.lineTo(thrust_x, thrust_y + 4);
             as.ctx.closePath();
@@ -365,6 +397,150 @@
     };
 
     /**
+     * Generate a cute little stick figure kitty ship.
+     */
+    as.createNyan = function() {
+        as.ship = {
+          x: as.canvas_w / 2,
+          y: as.canvas_h / 2,
+          vx: 0,
+          vy: 0,
+          vx2: 0,
+          vy2: 0,
+          turn: 5,
+          speed: 2.4,
+          friction: 0.99,
+          size: 14,
+          color: 'rgba(255, 255, 0, 1)',
+          angle: 0,
+          rx: 0,
+          ry: 0,
+          radius: 0,
+          nyan: null,
+          draw: function() {
+
+            // Rotate the ship
+            if (this.angle > 360) this.angle = 0;
+            if (this.angle < 0) this.angle = 360;
+            as.ctx.save();
+            as.ctx.translate(this.x, this.y);
+            as.ctx.rotate((Math.PI / 180 * (this.angle)));
+            as.ctx.translate(-this.x, -this.y);
+
+            // Draw thruster
+            if (as.isDirectionalKeyActive() && this.nyan) {
+              var thrust_x = (this.x + this.nyan.frame_w) - 10;
+              var thrust_y = this.y - 7;
+              var bow_size = 2.3;
+              var bow_seg_size = 12;
+
+              // Create offset line segments
+              for (var i = 0; i <= 2; i++) {
+                var even = i == i ? !(i%2) : 0;
+                var bow_offset = ((even) ? (bow_size / 2) : 0);
+                var timestamp = Date.now();
+                var timestamp_even = timestamp == timestamp ? !(timestamp%2) : 0;
+                if (timestamp_even) bow_offset = bow_offset * -1;
+
+                // Red
+                as.ctx.beginPath();
+                as.ctx.fillStyle = 'rgba(255, 0, 0, 1)';
+                as.ctx.rect(thrust_x + (i * bow_seg_size), thrust_y + bow_offset, bow_seg_size, bow_size);
+                as.ctx.fill();
+                as.ctx.closePath();
+
+                // Orange
+                as.ctx.beginPath();
+                as.ctx.fillStyle = 'rgba(255, 153, 0, 1)';
+                as.ctx.rect( thrust_x + (i * bow_seg_size), thrust_y + (bow_size) + bow_offset, bow_seg_size, bow_size);
+                as.ctx.fill();
+                as.ctx.closePath();
+
+                // Yellow
+                as.ctx.beginPath();
+                as.ctx.fillStyle = 'rgba(255, 255, 0, 1)';
+                as.ctx.rect( thrust_x + (i * bow_seg_size), thrust_y + (bow_size * 2) + bow_offset, bow_seg_size, bow_size);
+                as.ctx.fill();
+                as.ctx.closePath();
+
+                // Green
+                as.ctx.beginPath();
+                as.ctx.fillStyle = 'rgba(51, 255, 0, 1)';
+                as.ctx.rect( thrust_x + (i * bow_seg_size), thrust_y + (bow_size * 3) + bow_offset, bow_seg_size, bow_size);
+                as.ctx.fill();
+                as.ctx.closePath();
+
+                // Blue
+                as.ctx.beginPath();
+                as.ctx.fillStyle = 'rgba(0, 153, 255, 1)';
+                as.ctx.rect( thrust_x + (i * bow_seg_size), thrust_y + (bow_size * 4) + bow_offset, bow_seg_size, bow_size);
+                as.ctx.fill();
+                as.ctx.closePath();
+
+                // Purple
+                as.ctx.beginPath();
+                as.ctx.fillStyle = 'rgba(102, 51, 255, 1)';
+                as.ctx.rect( thrust_x + (i * bow_seg_size), thrust_y + (bow_size * 5) + bow_offset, bow_seg_size, bow_size);
+                as.ctx.fill();
+                as.ctx.closePath();
+              }
+            }
+
+            // Create the kitty sprite if it doesn't yet exist.
+            if (!this.nyan) {
+              var nyanImage = new Image();
+              nyanImage.src = "assets/nyan-sprite-sheet.png";
+              this.nyan = as.core.sprite({
+                ctx: as.ctx,
+                width: 100,
+                height: 100,
+                image: nyanImage,
+                scale: 1,
+                frame_w: 36,
+                frame_h: 20,
+                frames: 12,
+                frame_idx: 0,
+                frame_rate: 100
+              });
+            }
+
+            // Draw nyan
+            var sprite_x = this.x;
+            var sprite_y = this.y - 10;
+            as.ctx.drawImage(
+              this.nyan.image,
+              this.nyan.frame_w * this.nyan.frame_idx,
+              0,
+              this.nyan.frame_w,
+              this.nyan.frame_h,
+              sprite_x,
+              sprite_y,
+              this.nyan.frame_w,
+              this.nyan.frame_h
+            );
+
+            // Update collision circle info
+            this.rx = this.x + 15;
+            this.ry = this.y;
+            this.radius = this.size;
+
+            // Draw collision rectangle around ship
+            if (as.debug_mode) {
+              as.ctx.strokeStyle = 'red';
+              as.ctx.lineWidth = 2;
+              as.ctx.beginPath();
+              as.ctx.arc(this.rx, this.ry, this.radius, 0, 360);
+              as.ctx.closePath();
+              as.ctx.stroke();
+            }
+
+            // Restore transformation state
+            as.ctx.restore();
+          }
+        }
+    },
+
+    /**
      * Handle ship's keyboard input.
      */
     as.shipInput = function(e) {
@@ -385,7 +561,7 @@
 
       // Reveal the ship after an explosion
       as.ship_exploded = false;
-      as.ship.color = 'white';
+      as.ship.color = (as.nyan_mode) ? 'yellow' : 'white';
     };
 
     /**
@@ -1240,7 +1416,11 @@
     as.startGame = function() {
       as.core.then = Date.now();
       as.createAsteroids(as.levels[as.stats.level].asteroids);
-      as.createShip();
+      if (as.nyan_mode) {
+        as.createNyan();
+      } else {
+        as.createShip();
+      }
       as.core.frame();
     };
 

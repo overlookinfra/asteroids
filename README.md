@@ -8,6 +8,8 @@ improve it much more. I'm posting it on GitHub in case anyone finds any
 of the bits of code useful. Programming Asteroids is a really great way
 to get started understanding the basics of 2D video games. Enjoy!
 
+![alt text](https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png "Asteroids in Nyan Mode")
+
 View [demo](http://boilerjs.com/misc/asteroids/asteroids.html).
 
 ## Up and running
@@ -26,6 +28,7 @@ Then include the following script to initialize the game.
     var asteroids = new Asteroids();
     asteroids.init({
         debug_mode: false,
+        nyan_mode: true,
         levels: {
             1: {
                 asteroids: 3,
