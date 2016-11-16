@@ -98,7 +98,7 @@
       as.nyan_mode = options.nyan_mode || false;
 
       // Nyan path override?
-      as.nyan_path_override = options.nyan_path_override || "assets/nyan-sprite-sheet.png";
+      as.nyan_path_override = options.nyan_path_override || '';
 
       // Configure game levels (REQUIRED!)
       as.levels = options.levels;
@@ -437,6 +437,9 @@
               var bow_size = 2.3;
               var bow_seg_size = 12;
 
+              // Play the annoying nyan sound track
+              this.nyan.sound.play();
+
               // Create offset line segments
               for (var i = 0; i <= 2; i++) {
                 var even = i == i ? !(i%2) : 0;
@@ -487,12 +490,16 @@
                 as.ctx.fill();
                 as.ctx.closePath();
               }
+            } else if (this.nyan) {
+              this.nyan.sound.pause();
             }
 
             // Create the kitty sprite if it doesn't yet exist.
             if (!this.nyan) {
+
+              // Create nyan sprite
               var nyanImage = new Image();
-              nyanImage.src = as.nyan_path_override;
+              nyanImage.src = as.nyan_path_override + 'assets/nyan-sprite-sheet.png';
               this.nyan = as.core.sprite({
                 ctx: as.ctx,
                 width: 100,
@@ -505,6 +512,23 @@
                 frame_idx: 0,
                 frame_rate: 100
               });
+
+              // Create nyan sound file
+              this.nyan.sound = document.createElement('audio');
+              if (this.nyan.sound.canPlayType('audio/mpeg') != '') {
+                this.nyan.sound.src = as.nyan_path_override + 'assets/nyanlooped.mp3';
+              } else {
+                this.nyan.sound.src = as.nyan_path_override + 'assets/nyanlooped.ogg';
+              }
+
+              // Handle nyan sound event
+              this.nyan.sound.addEventListener('ended', function() {
+                // See: http://forestmist.org/2010/04/html5-audio-loops/
+                this.currentTime = 0;
+              }, false);
+
+              // Append the sound track element
+              document.body.appendChild(this.nyan.sound);
             }
 
             // Draw nyan
