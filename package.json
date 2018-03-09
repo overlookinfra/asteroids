@@ -1,0 +1,19 @@
+{
+  "name": "asteroids",
+  "version": "1.0.0",
+  "description": "Asteroids! ... Or something kind of like it.",
+  "main": "asteroids.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Xaxis/asteroids.git"
+  },
+  "author": "Wil Neeley",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Xaxis/asteroids/issues"
+  },
+  "homepage": "https://github.com/Xaxis/asteroids#readme"
+}
