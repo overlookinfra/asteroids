@@ -502,7 +502,7 @@
 
               // Create nyan sprite
               var nyanImage = new Image();
-              nyanImage.src = as.nyan_path_override + 'assets/nyan-sprite-sheet.png';
+              nyanImage.src = as.nyan_path_override + 'assets/dag-sprite-sheet.png';
               this.nyan = as.core.sprite({
                 ctx: as.ctx,
                 width: 100,
@@ -511,7 +511,7 @@
                 scale: 1,
                 frame_w: 36,
                 frame_h: 20,
-                frames: 12,
+                frames: 1,
                 frame_idx: 0,
                 frame_rate: 100
               });
